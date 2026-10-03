@@ -1707,7 +1707,7 @@ class MainWindow(QMainWindow):
         )
 
         badge = "DFA" if self.machine.is_deterministic() else "NFA"
-        self.dbadge.setText(f"Design: {getattr(self, "_designer_mode", "DFA")}")
+        self.dbadge.setText("Design: " + getattr(self, "_designer_mode", "DFA"))
         self.sbadge.setText(badge)
         self.tbadge.setText(badge)
         self.cbadge.setText(badge)

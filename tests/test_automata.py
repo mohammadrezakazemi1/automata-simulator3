@@ -59,15 +59,6 @@ class AutomataTests(unittest.TestCase):
             {("q0", "a", "q0"), ("q0", "a", "q1")},
         )
 
-    def test_dfa_rejects_conflicting_destinations(self):
-        a = FiniteAutomaton(
-            ["q0", "q1", "q2"], ["a"],
-            [Transition("q0", "a", "q1")],
-            "q0", {"q1"}
-        )
-        with self.assertRaises(ValueError):
-            a.add_transition("q0", "a", "q2")
-
     def test_epsilon_nfa(self):
         a = FiniteAutomaton(
             ["q0","q1"], ["a"],

@@ -1198,6 +1198,9 @@ class MainWindow(QMainWindow):
 
         self.design_graph.set_mode(getattr(self, "_designer_mode", "DFA"))
         self.design_graph.set_automaton(self.machine, self.current, self.path)
+        self.edge_btn.blockSignals(True)
+        self.edge_btn.setChecked(self.design_graph.edge_mode)
+        self.edge_btn.blockSignals(False)
         self.sim_graph.set_automaton(
             self.machine, self.current, self.path,
             getattr(self, "simulation_active_edges", set()),

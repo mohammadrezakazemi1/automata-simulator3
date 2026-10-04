@@ -83,11 +83,11 @@ Created by Mohammadreza Kazemi — ساخته شده توسط محمدرضا ک�
 DFA and NFA are separate design workspaces. Switching the mode changes the editing rules and graph behavior while preserving each workspace independently. Text-based automaton import has been removed from the Designer. NFA → DFA conversion remains available only in the dedicated conversion module.
 
 
-## Designer architecture (v3)
+## معماری Designer در نسخه 3
 
-- DFA and NFA are independent graphical construction workspaces.
-- The selected Designer mode controls construction rules; it never auto-converts the current machine.
-- DFA mode allows at most one destination for each (state, symbol).
-- NFA mode allows multiple destinations for the same (state, symbol).
-- The NFA → DFA operation exists only in the dedicated Conversion page.
-- Text-based machine import is intentionally removed; machine construction is graphical only.
+- Workspaceهای DFA و NFA کاملاً مستقل هستند.
+- Mode انتخاب‌شده فقط قوانین ساخت ماشین را تعیین می‌کند و باعث تبدیل خودکار نمی‌شود.
+- در DFA برای هر (State, Symbol) حداکثر یک مقصد مجاز است و ε-transition مجاز نیست.
+- در NFA چند مقصد برای یک Symbol و همچنین ε-transition مجاز است.
+- تبدیل NFA → DFA فقط در بخش اختصاصی Conversion انجام می‌شود.
+- ورود متنی ماشین حذف شده و ساخت ماشین کاملاً گرافیکی است.

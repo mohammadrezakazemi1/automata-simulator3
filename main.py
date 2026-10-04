@@ -253,6 +253,29 @@ class GraphView(QWidget):
         except Exception as error:
             QMessageBox.warning(self, "Transition", str(error))
 
+    @staticmethod
+    def _active_states_from_label(label):
+        """Parse an NFA simulation label such as '{q0,q1}' into states."""
+        if not isinstance(label, str):
+            return set()
+        value = label.strip()
+        if value.startswith("{") and value.endswith("}"):
+            value = value[1:-1].strip()
+        if not value or value == "∅":
+            return set()
+        return {item.strip() for item in value.split(",") if item.strip()}
+
+    def keyPressEvent(self, event):
+        """Handle Escape to cancel edge construction."""
+        if event.key() == Qt.Key_Escape and self.editable and self.edge_mode:
+            self.edge_mode = False
+            self.edge_source = None
+            self.setFocus()
+            self.update()
+            self.changed.emit()
+            return
+        super().keyPressEvent(event)
+
     def _tick(self):
         self.flow_t = (self.flow_t + 0.018) % 1
         self.update()
@@ -387,8 +410,18 @@ class GraphView(QWidget):
                     painter.setBrush(QBrush(QColor("#d9d3ff")))
                     painter.drawEllipse(flow_position, 5, 5)
 
+        active_states = set()
+        if isinstance(self.active, (set, frozenset, list, tuple)):
+            active_states = set(self.active)
+        elif isinstance(self.active, str):
+            active_states = self._active_states_from_label(self.active)
+
         for state, position in self.positions.items():
-            highlighted = state == self.selected or state == self.active
+            highlighted = (
+                state == self.selected
+                or state == self.active
+                or state in active_states
+            )
             painter.setPen(QPen(QColor("#b5aaff" if highlighted else "#66758a"), 3 if highlighted else 2))
             painter.setBrush(QBrush(QColor("#1a202c")))
             painter.drawEllipse(position, state_radius, state_radius)
@@ -467,6 +500,7 @@ class MainWindow(QMainWindow):
         self.input_index = 0
         self.simulation_active_edges = set()
         self.simulation_history = []
+        self.convert_source_machine = None
 
         self.grammar_text = "S -> a A\nA -> b A | ε"
 
@@ -790,6 +824,7 @@ class MainWindow(QMainWindow):
         self.convert_load_btn.clicked.connect(self.load_conversion_source)
         self.convert_btn = QPushButton()
         self.convert_btn.clicked.connect(self.convert_nfa)
+        self.convert_btn.setEnabled(False)
         self.convert_layout_btn = QPushButton()
         self.convert_layout_btn.clicked.connect(self.auto_layout_conversion_graphs)
         self.convert_hint = QLabel()
@@ -829,8 +864,14 @@ class MainWindow(QMainWindow):
         self.convert_info.setMaximumHeight(180)
         layout.addWidget(self.convert_info)
 
-        self.convert_source_graph.set_automaton(self.machine,self.machine.start)
-        self.convert_source_title.setText("Source: "+("DFA" if self.machine.is_deterministic() else "NFA"))
+        self.convert_source_graph.set_automaton(None)
+        self.convert_graph.set_automaton(None)
+        self.convert_source_title.setText("Source: —")
+        self.convert_result_title.setText("Result: —")
+        self.convert_info.setPlainText(
+            "Load the current machine first.\n"
+            "ابتدا ماشین فعلی را بارگذاری کنید."
+        )
         return page
 
     def _grammar(self):
@@ -1036,6 +1077,8 @@ class MainWindow(QMainWindow):
         self.edge_btn.setChecked(False)
 
         self._refresh_views()
+        self.dfa_mode_btn.setChecked(mode == "DFA")
+        self.nfa_mode_btn.setChecked(mode == "NFA")
         self.design_graph.setFocus()
 
     def clear_designer(self):
@@ -1097,9 +1140,12 @@ class MainWindow(QMainWindow):
         """Delete the selected state and its incident transitions."""
         state = self.design_graph.selected
         if state:
+            was_start = self.machine.start == state
             self.machine.remove_state(state)
+            if was_start:
+                self.machine.start = None
             self.design_graph.selected = None
-            self._refresh_views()
+            self.reset_simulation()
 
     def delete_transition(self):
         """Delete one exact transition chosen from the current machine."""
@@ -1203,6 +1249,8 @@ class MainWindow(QMainWindow):
         return closure, edges
 
     def _nfa_state_label(self, states):
+        if not states:
+            return "∅"
         return "{" + ",".join(sorted(states)) + "}"
 
     def _exact_transitions_for_step(self, source_states, symbol, target_states):
@@ -1307,15 +1355,11 @@ class MainWindow(QMainWindow):
             self.simulation_history.append(set(self.simulation_active_edges))
         else:
             previous_states = set(self._path_state_set(previous))
-            moved_states = self.machine.move(previous_states, symbol)
-            next_states, epsilon_edges = self._epsilon_closure_with_edges(moved_states)
+            next_states, used_edges = self._nfa_step_with_edges(previous_states, symbol)
             self.current = self._nfa_state_label(next_states)
             self.path.append(self.current)
-            self.simulation_active_edges = (
-                self._exact_transitions_for_step(previous_states, symbol, next_states)
-                | epsilon_edges
-            )
-            self.simulation_history.append(set(self.simulation_active_edges))
+            self.simulation_active_edges = used_edges
+            self.simulation_history.append(set(used_edges))
 
         self.input_index += 1
         self.sim_graph.set_automaton(
@@ -1380,18 +1424,13 @@ class MainWindow(QMainWindow):
                 self.simulation_history.append(set(self.simulation_active_edges))
             else:
                 previous_states = set(self._path_state_set(previous))
-                next_states = self.machine.epsilon_closure(
-                    self.machine.move(previous_states, symbol)
+                next_states, used_edges = self._nfa_step_with_edges(
+                    previous_states, symbol
                 )
-                self.current = "{" + ",".join(sorted(next_states)) + "}"
+                self.current = self._nfa_state_label(next_states)
                 self.path.append(self.current)
-
-                self.simulation_active_edges = self._exact_transitions_for_step(
-                    previous_states,
-                    symbol,
-                    next_states,
-                )
-                self.simulation_history.append(set(self.simulation_active_edges))
+                self.simulation_active_edges = used_edges
+                self.simulation_history.append(set(used_edges))
 
             self.input_index += 1
 
@@ -1419,6 +1458,18 @@ class MainWindow(QMainWindow):
 
         except Exception as error:
             QMessageBox.warning(self, "Error", str(error))
+
+    def _nfa_step_with_edges(self, previous_states, symbol):
+        """Apply one NFA symbol and return destination states plus exact used edges."""
+        moved_states = self.machine.move(set(previous_states), symbol)
+        next_states, epsilon_edges = self._epsilon_closure_with_edges(moved_states)
+        used_edges = (
+            self._exact_transitions_for_step(
+                set(previous_states), symbol, next_states
+            )
+            | epsilon_edges
+        )
+        return next_states, used_edges
 
     @staticmethod
     def _path_state_set(value):
@@ -1456,53 +1507,93 @@ class MainWindow(QMainWindow):
         if self.machine.is_deterministic():
             self.current = self.machine.start
         else:
-            self.current = self._nfa_state_label(
-                self.machine.epsilon_closure({self.machine.start})
+            self.current = (
+                self._nfa_state_label(
+                    self.machine.epsilon_closure({self.machine.start})
+                )
+                if self.machine.start
+                else None
             )
         self.path = [self.current]
         self._refresh_views()
 
-    def auto_layout_converted_dfa(self):
-        """Arrange the converted DFA in a readable left-to-right layout."""
-        automaton = self.convert_graph.automaton
-        if not automaton or not automaton.states:
+    def load_conversion_source(self):
+        """Snapshot the current machine for a stable conversion workspace."""
+        try:
+            self.machine.validate()
+        except Exception as error:
+            QMessageBox.warning(self, "Conversion", str(error))
             return
 
-        width = max(self.convert_graph.width(), 700)
-        height = max(self.convert_graph.height(), 420)
-        margin_x = 90
-        usable_width = max(width - 2 * margin_x, 420)
+        self.convert_source_machine = self.machine.clone()
+        source = self.convert_source_machine
+        self.convert_source_graph.set_mode(
+            "DFA" if source.is_deterministic() else "NFA"
+        )
+        self.convert_source_graph.set_automaton(source, source.start)
+        self.convert_graph.set_automaton(None)
+        self.convert_source_title.setText(
+            "Source: " + ("DFA" if source.is_deterministic() else "NFA")
+        )
+        self.convert_result_title.setText("Result: —")
+        self.convert_info.setPlainText(
+            "Source machine loaded. Press Convert to build the DFA.\n"
+            "ماشین ورودی بارگذاری شد؛ برای ساخت DFA روی Convert بزنید."
+        )
+        self.convert_btn.setEnabled(True)
+        self.auto_layout_conversion_graphs()
 
-        # Subset construction already creates states in discovery order.
-        # Keep that semantic order while distributing states across columns.
-        column_count = max(1, math.ceil(math.sqrt(len(automaton.states))))
-        columns = [
-            automaton.states[i:i + column_count]
-            for i in range(0, len(automaton.states), column_count)
-        ]
+    def auto_layout_conversion_graphs(self):
+        """Arrange both conversion graphs without changing their automata."""
+        def layout_graph(graph):
+            automaton = graph.automaton
+            if not automaton or not automaton.states:
+                return
+            width = max(graph.width(), 520)
+            height = max(graph.height(), 420)
+            margin_x = 80
+            usable_width = max(width - 2 * margin_x, 360)
+            count = len(automaton.states)
+            columns_count = max(1, math.ceil(math.sqrt(count)))
+            columns = [
+                automaton.states[i:i + columns_count]
+                for i in range(0, len(automaton.states), columns_count)
+            ]
+            graph.positions = {}
+            for column_index, column in enumerate(columns):
+                x = margin_x + (
+                    usable_width * column_index / max(len(columns) - 1, 1)
+                )
+                if len(columns) == 1:
+                    x = width / 2
+                spacing = height / (len(column) + 1)
+                for row_index, state in enumerate(column):
+                    graph.positions[state] = QPointF(
+                        x, spacing * (row_index + 1)
+                    )
+            graph.update()
 
-        self.convert_graph.positions = {}
-        for column_index, column in enumerate(columns):
-            x = margin_x + (
-                usable_width * column_index / max(len(columns) - 1, 1)
-            )
-            if len(columns) == 1:
-                x = width / 2
+        layout_graph(self.convert_source_graph)
+        layout_graph(self.convert_graph)
 
-            spacing = height / (len(column) + 1)
-            for row_index, state in enumerate(column):
-                y = spacing * (row_index + 1)
-                self.convert_graph.positions[state] = QPointF(x, y)
-
-        self.convert_graph.update()
+    def auto_layout_converted_dfa(self):
+        """Backward-compatible alias for the conversion workspace layout."""
+        self.auto_layout_conversion_graphs()
 
     def convert_nfa(self):
-        """Convert the current NFA to a DFA using subset construction."""
+        """Convert the loaded source machine to a DFA using subset construction."""
         try:
-            dfa = self.machine.to_dfa()
+            if self.convert_source_machine is None:
+                self.load_conversion_source()
+            if self.convert_source_machine is None:
+                return
 
+            source = self.convert_source_machine
+            dfa = source.to_dfa()
+            self.convert_graph.set_mode("DFA")
             self.convert_graph.set_automaton(dfa, dfa.start)
-            self.auto_layout_converted_dfa()
+            self.convert_result_title.setText("Result: DFA")
+            self.auto_layout_conversion_graphs()
 
             lines = [
                 "DFA created by subset construction",
@@ -1511,15 +1602,13 @@ class MainWindow(QMainWindow):
                 f"Start: {dfa.start}",
                 f"Final: {', '.join(sorted(dfa.finals)) or '—'}",
                 "",
+                "Transitions:",
             ]
-
             lines.extend(
                 f"{t.source} --{t.symbol} --> {t.target}"
                 for t in dfa.transitions
             )
-
             self.convert_info.setPlainText("\n".join(lines))
-
         except Exception as error:
             QMessageBox.warning(self, "Conversion", str(error))
 

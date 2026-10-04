@@ -212,6 +212,12 @@ class GraphView(QWidget):
             return
 
         if self.mode == "DFA":
+            if symbol.strip() == "ε":
+                QMessageBox.warning(
+                    self, "DFA transition",
+                    "DFA mode does not allow ε-transitions."
+                )
+                return
             targets = [target]
             existing = {
                 t.target for t in self.automaton.transitions
@@ -241,6 +247,20 @@ class GraphView(QWidget):
             ]
             if not targets:
                 return
+
+        # Validate every target before mutating the machine, so a bad target
+        # can never leave a partially-created NFA transition set.
+        invalid_targets = [
+            destination for destination in targets
+            if destination not in self.automaton.states
+        ]
+        if invalid_targets:
+            QMessageBox.warning(
+                self,
+                "NFA Targets",
+                "Unknown state(s): " + ", ".join(invalid_targets),
+            )
+            return
 
         try:
             for destination in targets:
@@ -1212,9 +1232,17 @@ class MainWindow(QMainWindow):
 
     def _refresh_transition_table(self):
         """Render the current automaton as a transition table."""
-        self.transition_table.setColumnCount(len(self.machine.alphabet) + 1)
+        epsilon_present = any(
+            transition.symbol == "ε"
+            for transition in self.machine.transitions
+        )
+        symbols = list(self.machine.alphabet)
+        if epsilon_present:
+            symbols.append("ε")
+
+        self.transition_table.setColumnCount(len(symbols) + 1)
         self.transition_table.setHorizontalHeaderLabels(
-            [self.tr("state")] + self.machine.alphabet
+            [self.tr("state")] + symbols
         )
         self.transition_table.setRowCount(len(self.machine.states))
 
@@ -1228,7 +1256,7 @@ class MainWindow(QMainWindow):
                 QTableWidgetItem(prefix + final_marker + state),
             )
 
-            for column, symbol in enumerate(self.machine.alphabet, start=1):
+            for column, symbol in enumerate(symbols, start=1):
                 destinations = sorted(
                     self.machine.destinations(state, symbol)
                 )
@@ -1401,6 +1429,7 @@ class MainWindow(QMainWindow):
     def step_simulation(self):
         """Advance one input symbol and highlight the transitions used."""
         try:
+            self.machine.validate()
             text = self.input.text().strip()
 
             if self.input_index == 0:

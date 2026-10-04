@@ -20,7 +20,7 @@ class AutomataTests(unittest.TestCase):
             "q0", {"q2"}
         )
         dfa = a.to_dfa()
-        self.assertFalse(dfa.is_deterministic() is False)
+        self.assertTrue(dfa.is_deterministic())
         self.assertTrue(dfa.simulate_dfa("01")[0])
 
     def test_subset_construction_keeps_dead_state(self):
@@ -69,6 +69,27 @@ class AutomataTests(unittest.TestCase):
         dfa = a.to_dfa()
         self.assertTrue(dfa.is_deterministic())
         self.assertTrue(dfa.simulate_dfa("aaa")[0])
+
+    def test_delete_start_state_does_not_choose_a_new_start(self):
+        a = FiniteAutomaton(
+            ["q0", "q1"], ["a"],
+            [Transition("q0", "a", "q1")],
+            "q0", {"q1"}
+        )
+        a.remove_state("q0")
+        self.assertIsNone(a.start)
+        self.assertEqual(a.states, ["q1"])
+
+    def test_empty_input_and_missing_transition(self):
+        a = FiniteAutomaton(
+            ["q0", "q1"], ["a"],
+            [Transition("q0", "a", "q1")],
+            "q0", {"q0"}
+        )
+        self.assertTrue(a.simulate_dfa("")[0])
+        with self.assertRaises(ValueError):
+            a.simulate_dfa("aa")
+
 
 if __name__ == "__main__":
     unittest.main()

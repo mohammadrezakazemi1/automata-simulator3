@@ -266,7 +266,7 @@ class GraphView(QWidget):
         return {item.strip() for item in value.split(",") if item.strip()}
 
     def keyPressEvent(self, event):
-        """Handle Escape to cancel edge construction."""
+        """Handle Escape cancellation and keyboard deletion in the designer."""
         if event.key() == Qt.Key_Escape and self.editable and self.edge_mode:
             self.edge_mode = False
             self.edge_source = None
@@ -274,6 +274,21 @@ class GraphView(QWidget):
             self.update()
             self.changed.emit()
             return
+
+        if (
+            self.editable
+            and not self.movable
+            and event.key() in (Qt.Key_Delete, Qt.Key_Backspace)
+            and self.selected
+        ):
+            selected = self.selected
+            self.automaton.remove_state(selected)
+            self.positions.pop(selected, None)
+            self.selected = None
+            self.changed.emit()
+            self.update()
+            return
+
         super().keyPressEvent(event)
 
     def _tick(self):

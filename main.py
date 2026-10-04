@@ -1865,7 +1865,7 @@ class MainWindow(QMainWindow):
             "New Machine" if self.lang == "en" else "ماشین جدید"
         )
         self.convert_load_btn.setText("Load Current Machine" if self.lang=="en" else "بارگذاری ماشین فعلی")
-        self.convert_btn.setText("Convert NFA → DFA" if self.lang=="en" else "تبدیل NFA → DFA")
+        self.convert_btn.setText("Convert" if self.lang=="en" else "تبدیل")
         self.convert_layout_btn.setText("Auto-layout Both" if self.lang=="en" else "مرتب‌سازی هر دو")
         self.convert_hint.setText("Both graphs are movable" if self.lang=="en" else "هر دو گراف قابل جابه‌جایی هستند")
         source_label = (
@@ -1888,9 +1888,9 @@ class MainWindow(QMainWindow):
         )
 
         self.convert_btn.setText(
-            "تبدیل NFA به DFA"
+            "تبدیل"
             if self.lang == "fa"
-            else "Convert NFA to DFA"
+            else "Convert"
         )
         self.convert_layout_btn.setText(
             "مرتب‌سازی خودکار DFA"

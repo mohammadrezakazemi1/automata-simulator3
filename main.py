@@ -903,23 +903,11 @@ class MainWindow(QMainWindow):
 
         self.gback = QPushButton()
         self.ganalyze = QPushButton()
-        self.gleft = QPushButton()
-        self.gfactor = QPushButton()
-        self.gll1 = QPushButton()
 
         self.gback.clicked.connect(lambda: self.navigate("designer"))
         self.ganalyze.clicked.connect(self.grammar_analyze)
-        self.gleft.clicked.connect(self.grammar_left)
-        self.gfactor.clicked.connect(self.grammar_factor)
-        self.gll1.clicked.connect(self.grammar_ll1)
 
-        for button in (
-            self.gback,
-            self.ganalyze,
-            self.gleft,
-            self.gfactor,
-            self.gll1,
-        ):
+        for button in (self.gback, self.ganalyze):
             button.setMinimumHeight(40)
             toolbar_layout.addWidget(button)
 
@@ -1016,42 +1004,7 @@ class MainWindow(QMainWindow):
         tree_layout.addWidget(self.gder)
 
         splitter.addWidget(tree_panel)
-
-        # Analysis, FIRST/FOLLOW and LL(1) output.
-        analysis_panel = QFrame()
-        analysis_panel.setStyleSheet(self.panel_style())
-        analysis_layout = QVBoxLayout(analysis_panel)
-
-        tabs = QHBoxLayout()
-        self.gtab_buttons = []
-
-        for key in ("analysis", "first_follow", "ll1"):
-            button = QPushButton()
-            button.setObjectName(f"grammar_tab_{key}")
-            button.setMinimumHeight(34)
-            self.gtab_buttons.append((key, button))
-            tabs.addWidget(button)
-
-        analysis_layout.addLayout(tabs)
-
-        self.ganalysis = QTextEdit()
-        self.ganalysis.setReadOnly(True)
-        self.ganalysis.setStyleSheet(
-            """
-            QTextEdit {
-                font-family: Consolas;
-                background: #0b1017;
-                border: 1px solid #303949;
-                border-radius: 9px;
-                color: #d9e1ef;
-                padding: 12px;
-            }
-            """
-        )
-        analysis_layout.addWidget(self.ganalysis, 1)
-
-        splitter.addWidget(analysis_panel)
-        splitter.setSizes([430, 430, 360])
+        splitter.setSizes([500, 700])
 
         layout.addWidget(splitter, 1)
 
@@ -1668,14 +1621,9 @@ class MainWindow(QMainWindow):
             grammar = self._parse_current_grammar()
             errors = grammar.validate()
 
-            first = grammar.first_sets()
-            follow = grammar.follow_sets()
-
             accepted, tree, _ = grammar.parse_string(
                 self.ginput.text().strip()
             )
-
-            _, conflicts = grammar.ll1_table()
 
             lines = [
                 "Grammar is valid ✓" if not errors else "Grammar errors:",
@@ -1683,32 +1631,16 @@ class MainWindow(QMainWindow):
                 f"Classification: {grammar.classification()}",
                 f"Productions: {len(grammar.productions)}",
                 "",
-                "FIRST:",
+                "String: "
+                + ("Accepted ✓" if accepted else "Rejected ✕"),
             ]
 
-            lines.extend(
-                f"FIRST({name}) = {{ {', '.join(sorted(first[name]))} }}"
-                for name in sorted(first)
+            # Keep the analysis concise: this workspace is focused on
+            # grammar editing, input parsing, derivation and parse tree.
+            self.grammar_info.setText(
+                self.grammar_info.text()
+                + ("\n\n" + "\n".join(lines))
             )
-
-            lines.extend(["", "FOLLOW:"])
-
-            lines.extend(
-                f"FOLLOW({name}) = {{ {', '.join(sorted(follow[name]))} }}"
-                for name in sorted(follow)
-            )
-
-            lines.extend(
-                [
-                    "",
-                    f"LL(1): {'Yes' if not conflicts else 'No — conflicts detected'}",
-                    "",
-                    "String: "
-                    + ("Accepted ✓" if accepted else "Rejected ✕"),
-                ]
-            )
-
-            self.ganalysis.setPlainText("\n".join(lines))
             self.gtree.setPlainText(
                 self.format_tree(tree) if accepted else "—"
             )
@@ -1925,22 +1857,6 @@ class MainWindow(QMainWindow):
             if self.lang == "fa"
             else "▶ Analyze & Test"
         )
-        self.gleft.setText(
-            "↻ حذف بازگشت چپ"
-            if self.lang == "fa"
-            else "↻ Remove Left Recursion"
-        )
-        self.gfactor.setText(
-            "⇥ فاکتورگیری چپ"
-            if self.lang == "fa"
-            else "⇥ Left Factor"
-        )
-        self.gll1.setText(
-            "▦ جدول LL(1)"
-            if self.lang == "fa"
-            else "▦ LL(1) Table"
-        )
-
         self.grammar_editor_label.setText(
             "ویرایشگر گرامر"
             if self.lang == "fa"
@@ -1964,21 +1880,6 @@ class MainWindow(QMainWindow):
         self.grammar_derivation_label.setText(
             "اشتقاق" if self.lang == "fa" else "Derivation"
         )
-
-        for key, button in self.gtab_buttons:
-            labels_fa = {
-                "analysis": "تحلیل",
-                "first_follow": "FIRST / FOLLOW",
-                "ll1": "LL(1)",
-            }
-            labels_en = {
-                "analysis": "Analysis",
-                "first_follow": "FIRST / FOLLOW",
-                "ll1": "LL(1)",
-            }
-            button.setText(
-                (labels_fa if self.lang == "fa" else labels_en)[key]
-            )
 
         self.grammar_input_label.setText(
             "رشته ورودی" if self.lang == "fa" else "Input String"

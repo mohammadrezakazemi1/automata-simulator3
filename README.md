@@ -78,12 +78,7 @@ py -3.11 -m unittest discover -s tests -v
 
 Created by Mohammadreza Kazemi — ساخته شده توسط محمدرضا کاظمی
 
-## Designer mode
-
-DFA and NFA are separate design workspaces. Switching the mode changes the editing rules and graph behavior while preserving each workspace independently. Text-based automaton import has been removed from the Designer. NFA → DFA conversion remains available only in the dedicated conversion module.
-
-
-## معماری Designer در نسخه 3
+## Designer architecture (v3)
 
 - Workspaceهای DFA و NFA کاملاً مستقل هستند.
 - Mode انتخاب‌شده فقط قوانین ساخت ماشین را تعیین می‌کند و باعث تبدیل خودکار نمی‌شود.

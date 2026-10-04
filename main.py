@@ -1806,6 +1806,8 @@ class MainWindow(QMainWindow):
             "grammar": 4,
         }
         self.stack.setCurrentIndex(indexes[page])
+        if page == "convert":
+            self.convert_btn.setEnabled(self.convert_source_machine is not None)
 
     def toggle_language(self):
         """Switch between English and Persian UI text."""

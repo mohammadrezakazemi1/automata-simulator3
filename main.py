@@ -1037,6 +1037,22 @@ class MainWindow(QMainWindow):
         self._designer_mode = mode
         self.machine = self.designer_machines[mode]
 
+        # A mode switch starts a fresh conversion context. The conversion
+        # page must never keep a stale NFA/DFA snapshot from the other mode.
+        if hasattr(self, "convert_source_machine"):
+            self.convert_source_machine = None
+        if hasattr(self, "convert_source_graph"):
+            self.convert_source_graph.set_automaton(None)
+            self.convert_graph.set_automaton(None)
+            self.convert_source_graph.set_mode(mode)
+            self.convert_source_title.setText(
+                "Source: " + mode if self.lang == "en" else "ورودی: " + mode
+            )
+            self.convert_result_title.setText(
+                "Result: —" if self.lang == "en" else "خروجی: —"
+            )
+            self.convert_btn.setEnabled(False)
+
         self.current = self.machine.start
         self.path = [self.current] if self.current else []
         self.input_index = 0

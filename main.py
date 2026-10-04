@@ -1503,27 +1503,47 @@ class MainWindow(QMainWindow):
         self._refresh_views()
 
     def load_conversion_source(self):
-        """Snapshot the current machine for a stable conversion workspace."""
+        """Load the current NFA into the NFA → DFA conversion workspace."""
         try:
             self.machine.validate()
         except Exception as error:
             QMessageBox.warning(self, "Conversion", str(error))
             return
 
+        # Conversion is intentionally NFA → DFA only.
+        if self.machine.is_deterministic():
+            self.convert_source_machine = None
+            self.convert_source_graph.set_automaton(None)
+            self.convert_graph.set_automaton(None)
+            self.convert_source_title.setText(
+                "Source: DFA" if self.lang == "en" else "ورودی: DFA"
+            )
+            self.convert_result_title.setText(
+                "Result: —" if self.lang == "en" else "خروجی: —"
+            )
+            self.convert_btn.setEnabled(False)
+            self.convert_info.setPlainText(
+                "NFA → DFA conversion requires an NFA source. "
+                "Switch Designer mode to NFA and load the machine.\n"
+                "برای تبدیل NFA به DFA باید ماشین ورودی NFA باشد؛ "
+                "حالت طراحی را روی NFA قرار دهید."
+            )
+            return
+
         self.convert_source_machine = self.machine.clone()
         source = self.convert_source_machine
-        self.convert_source_graph.set_mode(
-            "DFA" if source.is_deterministic() else "NFA"
-        )
+        self.convert_source_graph.set_mode("NFA")
         self.convert_source_graph.set_automaton(source, source.start)
         self.convert_graph.set_automaton(None)
         self.convert_source_title.setText(
-            "Source: " + ("DFA" if source.is_deterministic() else "NFA")
+            "Source: NFA" if self.lang == "en" else "ورودی: NFA"
         )
-        self.convert_result_title.setText("Result: —")
+        self.convert_result_title.setText(
+            "Result: —" if self.lang == "en" else "خروجی: —"
+        )
         self.convert_info.setPlainText(
-            "Source machine loaded. Press Convert to build the DFA.\n"
-            "ماشین ورودی بارگذاری شد؛ برای ساخت DFA روی Convert بزنید."
+            "NFA source loaded. Press Convert to build the DFA.\n"
+            "ماشین NFA بارگذاری شد؛ برای ساخت DFA روی تبدیل بزنید."
         )
         self.convert_btn.setEnabled(True)
         self.auto_layout_conversion_graphs()
@@ -1574,6 +1594,8 @@ class MainWindow(QMainWindow):
                 return
 
             source = self.convert_source_machine
+            if source.is_deterministic():
+                raise ValueError("Conversion is only available from NFA to DFA.")
             dfa = source.to_dfa()
             self.convert_graph.set_mode("DFA")
             self.convert_graph.set_automaton(dfa, dfa.start)

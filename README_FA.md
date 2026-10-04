@@ -53,12 +53,6 @@
 - Dark UI دانشگاهی
 - Designer، Simulator، Transition Table، NFA → DFA و Grammar Lab
 
-## قالب ورود ماشین
-
-~~~text
-states=q0,q1,q2; alphabet=a,b; start=q0; finals=q2; transitions=q0,a,q0|q0,a,q1|q0,b,q0|q1,b,q2|q2,a,q2|q2,b,q2
-~~~
-
 ## اجرای پروژه در Windows
 
 Python 3.11 را انتخاب کنید:
@@ -100,11 +94,11 @@ py -3.11 -m unittest discover -s tests -v
 در بخش طراحی، انتخاب DFA و NFA یک تنظیم مستقل برای **نوع ماشین در حال طراحی** است. دو Workspace جدا وجود دارد؛ طراحی DFA و طراحی NFA جداگانه نگهداری می‌شوند و با تغییر Mode، قوانین و نمای گراف مطابق همان Mode تغییر می‌کند. قابلیت ورود ماشین از متن از Designer حذف شده است. تبدیل NFA به DFA فقط از بخش اختصاصی تبدیل انجام می‌شود.
 
 
-## Designer architecture (v3)
+## معماری Designer در نسخه 3
 
-- DFA and NFA are independent graphical construction workspaces.
-- The selected Designer mode controls construction rules; it never auto-converts the current machine.
-- DFA mode allows at most one destination for each (state, symbol).
-- NFA mode allows multiple destinations for the same (state, symbol).
-- The NFA → DFA operation exists only in the dedicated Conversion page.
-- Text-based machine import is intentionally removed; machine construction is graphical only.
+- Workspaceهای DFA و NFA کاملاً مستقل هستند.
+- Mode انتخاب‌شده فقط قوانین ساخت ماشین را تعیین می‌کند و باعث تبدیل خودکار نمی‌شود.
+- در DFA برای هر (State, Symbol) حداکثر یک مقصد مجاز است و ε-transition مجاز نیست.
+- در NFA چند مقصد برای یک Symbol و همچنین ε-transition مجاز است.
+- تبدیل NFA → DFA فقط در بخش اختصاصی Conversion انجام می‌شود.
+- ورود متنی ماشین حذف شده و ساخت ماشین کاملاً گرافیکی است.

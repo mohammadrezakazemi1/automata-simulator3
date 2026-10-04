@@ -1612,8 +1612,17 @@ class MainWindow(QMainWindow):
                 return
 
             source = self.convert_source_machine
-            if source.is_deterministic():
-                raise ValueError("Conversion is only available from NFA to DFA.")
+
+            # The Designer's selected NFA mode is authoritative. An NFA can
+            # happen to have only one destination per (state, symbol), but it
+            # must still be accepted here and converted through subset
+            # construction.
+            if self._designer_mode != "NFA":
+                raise ValueError(
+                    "Conversion is only available from NFA mode. "
+                    "Switch Designer mode to NFA first."
+                )
+
             dfa = source.to_dfa()
             self.convert_graph.set_mode("DFA")
             self.convert_graph.set_automaton(dfa, dfa.start)

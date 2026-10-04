@@ -1310,7 +1310,7 @@ class MainWindow(QMainWindow):
             self.input_index = 0
             self.simulation_active_edges = set()
             self.simulation_history = []
-            if self.machine.is_deterministic():
+            if self._designer_mode == "DFA":
                 self.current = self.machine.start
             else:
                 self.current = self._nfa_state_label(self.machine.epsilon_closure({self.machine.start}))
@@ -1320,7 +1320,7 @@ class MainWindow(QMainWindow):
             if not text:
                 accepted = (
                     self.current in self.machine.finals
-                    if self.machine.is_deterministic()
+                    if self._designer_mode == "DFA"
                     else bool(self._path_state_set(self.current) & self.machine.finals)
                 )
                 result = self.tr("accepted") if accepted else self.tr("rejected")
@@ -1348,7 +1348,7 @@ class MainWindow(QMainWindow):
         previous = self.current
         symbol = text[self.input_index]
 
-        if self.machine.is_deterministic():
+        if self._designer_mode == "DFA":
             self.current = self.machine.step_dfa(previous, symbol)
             self.path.append(self.current)
             self.simulation_active_edges = {(previous, symbol, self.current)}
@@ -1377,7 +1377,7 @@ class MainWindow(QMainWindow):
             self.run_timer.stop()
             accepted = (
                 self.current in self.machine.finals
-                if self.machine.is_deterministic()
+                if self._designer_mode == "DFA"
                 else bool(self._path_state_set(self.current) & self.machine.finals)
             )
             result = self.tr("accepted") if accepted else self.tr("rejected")
@@ -1390,7 +1390,7 @@ class MainWindow(QMainWindow):
             text = self.input.text().strip()
 
             if self.input_index == 0:
-                if self.machine.is_deterministic():
+                if self._designer_mode == "DFA":
                     self.current = self.machine.start
                 else:
                     self.current = self._nfa_state_label(self.machine.epsilon_closure({self.machine.start}))
@@ -1399,7 +1399,7 @@ class MainWindow(QMainWindow):
                 self.simulation_history = []
 
             if self.input_index >= len(text):
-                if self.machine.is_deterministic():
+                if self._designer_mode == "DFA":
                     accepted = self.current in self.machine.finals
                 else:
                     accepted = bool(
@@ -1418,7 +1418,7 @@ class MainWindow(QMainWindow):
 
             previous = self.current
 
-            if self.machine.is_deterministic():
+            if self._designer_mode == "DFA":
                 self.current = self.machine.step_dfa(previous, symbol)
                 self.path.append(self.current)
                 self.simulation_active_edges = {(previous, symbol, self.current)}
@@ -1451,7 +1451,7 @@ class MainWindow(QMainWindow):
             if self.input_index >= len(text):
                 accepted = (
                     self.current in self.machine.finals
-                    if self.machine.is_deterministic()
+                    if self._designer_mode == "DFA"
                     else bool(self._path_state_set(self.current) & self.machine.finals)
                 )
                 result = self.tr("accepted") if accepted else self.tr("rejected")
@@ -1505,7 +1505,7 @@ class MainWindow(QMainWindow):
         self.input_index = 0
         self.simulation_active_edges = set()
         self.simulation_history = []
-        if self.machine.is_deterministic():
+        if self._designer_mode == "DFA":
             self.current = self.machine.start
         else:
             self.current = (
@@ -1526,8 +1526,10 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Conversion", str(error))
             return
 
-        # Conversion is intentionally NFA → DFA only.
-        if self.machine.is_deterministic():
+        # Conversion is intentionally NFA → DFA only. The selected
+        # construction mode is authoritative; a structurally deterministic
+        # NFA is still an NFA.
+        if self._designer_mode != "NFA":
             self.convert_source_machine = None
             self.convert_source_graph.set_automaton(None)
             self.convert_graph.set_automaton(None)
@@ -1796,11 +1798,14 @@ class MainWindow(QMainWindow):
             else "Grammar Lab"
         )
 
-        badge = "DFA" if self.machine.is_deterministic() else "NFA"
-        self.dbadge.setText("Design: " + getattr(self, "_designer_mode", "DFA"))
-        self.sbadge.setText(badge)
-        self.tbadge.setText(badge)
-        self.cbadge.setText(badge)
+        designer_mode = getattr(self, "_designer_mode", "DFA")
+        self.dbadge.setText(
+            ("حالت طراحی: " if self.lang == "fa" else "Design mode: ")
+            + designer_mode
+        )
+        self.sbadge.setText(designer_mode)
+        self.tbadge.setText(designer_mode)
+        self.cbadge.setText("NFA → DFA")
         self.gbadge.setText("CFG")
 
         self.add_btn.setText(
@@ -1854,12 +1859,19 @@ class MainWindow(QMainWindow):
         self.convert_btn.setText("Convert NFA → DFA" if self.lang=="en" else "تبدیل NFA → DFA")
         self.convert_layout_btn.setText("Auto-layout Both" if self.lang=="en" else "مرتب‌سازی هر دو")
         self.convert_hint.setText("Both graphs are movable" if self.lang=="en" else "هر دو گراف قابل جابه‌جایی هستند")
-        self.convert_source_title.setText(
-            ("Source: " if self.lang=="en" else "ورودی: ")
-            + ("DFA" if self.machine.is_deterministic() else "NFA")
+        source_label = (
+            ("Source: " if self.lang == "en" else "ورودی: ")
+            + designer_mode
+            if self.convert_source_machine is not None
+            else ("Source: —" if self.lang == "en" else "ورودی: —")
         )
-        self.convert_result_title.setText("Result: DFA" if self.lang=="en" else "خروجی: DFA")
-        designer_mode = getattr(self, "_designer_mode", "DFA")
+        self.convert_source_title.setText(source_label)
+        result_loaded = bool(self.convert_graph.automaton)
+        self.convert_result_title.setText(
+            ("Result: DFA" if self.lang == "en" else "خروجی: DFA")
+            if result_loaded
+            else ("Result: —" if self.lang == "en" else "خروجی: —")
+        )
         self.dfa_mode_btn.setChecked(designer_mode == "DFA")
         self.nfa_mode_btn.setChecked(designer_mode == "NFA")
         self.duration_label.setText(

@@ -1635,12 +1635,9 @@ class MainWindow(QMainWindow):
                 + ("Accepted ✓" if accepted else "Rejected ✕"),
             ]
 
-            # Keep the analysis concise: this workspace is focused on
+            # Keep the result concise: this workspace is focused on
             # grammar editing, input parsing, derivation and parse tree.
-            self.grammar_info.setText(
-                self.grammar_info.text()
-                + ("\n\n" + "\n".join(lines))
-            )
+            self.grammar_info.setText("\n".join(lines))
             self.gtree.setPlainText(
                 self.format_tree(tree) if accepted else "—"
             )

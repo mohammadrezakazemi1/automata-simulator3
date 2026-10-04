@@ -190,10 +190,14 @@ class FiniteAutomaton:
         return bool(current & self.finals), path
 
     def to_dfa(self):
-        """Convert an NFA/ε-NFA to a DFA using subset construction."""
+        """Convert an NFA/ε-NFA to a DFA using subset construction.
+
+        The GUI's selected construction mode determines whether the source is
+        an NFA. Therefore this method always performs subset construction
+        instead of returning a clone merely because the transition graph is
+        structurally deterministic.
+        """
         self.validate()
-        if self.is_deterministic():
-            return self.clone()
 
         start_subset = frozenset(self.epsilon_closure({self.start}))
         names = {start_subset: self._subset_name(start_subset)}

@@ -185,21 +185,6 @@ class GraphView(QWidget):
             self.dragging = None
             self.changed.emit()
 
-    def keyPressEvent(self, event):
-        """Delete the selected state with Delete/Backspace."""
-        if (
-            self.editable
-            and not self.movable
-            and event.key() in (Qt.Key_Delete, Qt.Key_Backspace)
-            and self.selected
-        ):
-            self.automaton.remove_state(self.selected)
-            self.positions.pop(self.selected, None)
-            self.selected = None
-
-            self.changed.emit()
-            self.update()
-
     def _add_transition(self, source, target):
         """Add one symbol transition, with optional multiple NFA targets."""
         symbol, accepted = QInputDialog.getText(

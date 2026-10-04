@@ -58,7 +58,9 @@ class FiniteAutomaton:
         ]
         self.finals.discard(name)
         if self.start == name:
-            self.start = self.states[0] if self.states else None
+            # A deleted start state must not silently select a different state.
+            # The UI will require the user to explicitly choose a new start.
+            self.start = None
 
     def add_transition(self, source: str, symbol: str, target: str):
         """Add a transition and register its symbol."""
